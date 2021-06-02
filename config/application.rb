@@ -10,7 +10,6 @@ module StripeMoneyIntegration
   class Application < Rails::Application
     # Initialize configuration defaults for originally generated Rails version.
     config.load_defaults 6.1
-
     # Configuration for the application, engines, and railties goes here.
     #
     # These settings can be overridden in specific environments using the files
@@ -18,5 +17,9 @@ module StripeMoneyIntegration
     #
     # config.time_zone = "Central Time (US & Canada)"
     # config.eager_load_paths << Rails.root.join("extras")
+    config_file = Rails.application.config_for(:application)
+    config_file.each do |key,value|
+      ENV[key] = value
+    end unless config_file.nil?
   end
 end

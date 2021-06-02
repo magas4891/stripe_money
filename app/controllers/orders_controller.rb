@@ -1,5 +1,6 @@
 class OrdersController < ApplicationController
   before_action :authenticate_user!
+  before_action :prepare_new_order, only: [:paypal_create_payment, :paypal_create_subscription]
 
   SUCCESS_MESSAGE = 'Order Performed Successfully!'
   FAILURE_MESSAGE = 'Oops something went wrong. Please call the administrator'
@@ -17,7 +18,7 @@ class OrdersController < ApplicationController
       prepare_new_order
       Orders::Stripe.execute(order: @order, user: current_user)
     elsif order_params[:payment_gateway] == "paypal"
-      #PAYPAL WILL BE HANDLED HERE
+      @order = Orders::Paypal.finish(order_params[:token])
     end
   ensure
     if @order&.save
@@ -30,6 +31,41 @@ class OrdersController < ApplicationController
       end
     end
     render html: FAILURE_MESSAGE
+  end
+
+  def paypal_create_payment
+    result = Orders::Paypal.create_payment(order: @order, product: @product)
+    if result
+      render json: { token: result }, status: :ok
+    else
+      render json: {error: FAILURE_MESSAGE}, status: :unprocessable_entity
+    end
+  end
+
+  def paypal_execute_payment
+    if Orders::Paypal.execute_payment(payment_id: params[:paymentID], payer_id: params[:payerID])
+      render json: {}, status: :ok
+    else
+      render json: {error: FAILURE_MESSAGE}, status: :unprocessable_entity
+    end
+  end
+
+  def paypal_create_subscription
+    result = Orders::Paypal.create_subscription(order: @order, product: @product)
+    if result
+      render json: { token: result }, status: :ok
+    else
+      render json: {error: FAILURE_MESSAGE}, status: :unprocessable_entity
+    end
+  end
+
+  def paypal_execute_subscription
+    result = Orders::Paypal.execute_subscription(token: params[:subscriptionToken])
+    if result
+      render json: { id: result}, status: :ok
+    else
+      render json: {error: FAILURE_MESSAGE}, status: :unprocessable_entity
+    end
   end
 
   private
